@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เครื่องชั่งผลไม้ด้วยเสียง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --chalk-black: #1c1b18;
+    --chalk-black-2: #242219;
+    --chalk-black-3: #2c2a20;
+    --chalk-white: #f3efe3;
+    --chalk-white-dim: #cfc9b8;
+    --mustard: #e7a93e;
+    --mustard-dim: #7a5f28;
+    --leaf: #8caa66;
+    --leaf-dim: #3c4a2c;
+    --tomato: #d1583b;
+    --line: #46422f;
+    --radius-tag: 22px;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 20% -10%, #2a2717 0%, transparent 55%),
+      radial-gradient(ellipse at 90% 110%, #23210f 0%, transparent 50%),
+      var(--chalk-black);
+    color:var(--chalk-white);
+    font-family:'Sarabun', sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:40px 16px 64px;
+  }
+
+  .wrap{
+    width:100%;
+    max-width:460px;
+  }
+
+  header{
+    text-align:center;
+    margin-bottom:28px;
+  }
+
+  .eyebrow{
+    font-family:'Kanit', sans-serif;
+    font-size:12px;
+    letter-spacing:0.16em;
+    color:var(--mustard);
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+
+  h1{
+    font-family:'Kanit', sans-serif;
+    font-weight:700;
+    font-size:26px;
+    margin:0 0 10px;
+    line-height:1.3;
+  }
+
+  .sub{
+    color:var(--chalk-white-dim);
+    font-size:14px;
+    line-height:1.7;
+    max-width:340px;
+    margin:0 auto;
+  }
+
+  .sub b{ color:var(--mustard); font-weight:600; }
+
+  /* ---- mic control ---- */
+  .mic-zone{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    margin:32px 0 30px;
+  }
+
+  .mic-btn{
+    position:relative;
+    width:92px;
+    height:92px;
+    border-radius:50%;
+    border:none;
+    cursor:pointer;
+    background:var(--mustard);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 6px 0 var(--mustard-dim), 0 10px 24px rgba(0,0,0,0.4);
+    transition:transform .12s ease, background .25s ease, box-shadow .25s ease;
+  }
+  .mic-btn:active{ transform:translateY(4px); box-shadow:0 2px 0 var(--mustard-dim), 0 6px 14px rgba(0,0,0,0.4); }
+
+  .mic-btn svg{ width:34px; height:34px; fill:var(--chalk-black); }
+
+  .mic-btn.listening{
+    background:var(--leaf);
+    box-shadow:0 6px 0 var(--leaf-dim), 0 10px 24px rgba(0,0,0,0.4);
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+
+  .mic-btn.speaking{
+    background:var(--chalk-white-dim);
+    box-shadow:0 6px 0 #8f8a76, 0 10px 24px rgba(0,0,0,0.4);
+  }
+
+  .mic-btn.finished{
+    background:var(--tomato);
+    box-shadow:0 6px 0 #7a2c1c, 0 10px 24px rgba(0,0,0,0.4);
+  }
+
+  @keyframes pulse{
+    0%,100%{ box-shadow:0 6px 0 var(--leaf-dim), 0 0 0 0 rgba(140,170,102,0.5), 0 10px 24px rgba(0,0,0,0.4); }
+    50%{ box-shadow:0 6px 0 var(--leaf-dim), 0 0 0 14px rgba(140,170,102,0), 0 10px 24px rgba(0,0,0,0.4); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .mic-btn.listening{ animation:none; }
+  }
+
+  .status{
+    font-family:'Kanit', sans-serif;
+    font-size:13px;
+    letter-spacing:0.04em;
+    color:var(--chalk-white-dim);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .status .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--chalk-white-dim);
+  }
+  .status.is-listening .dot{ background:var(--leaf); }
+  .status.is-listening{ color:var(--leaf); }
+  .status.is-speaking .dot{ background:var(--chalk-white-dim); }
+  .status.is-speaking{ color:var(--chalk-white-dim); }
+  .status.is-finished .dot{ background:var(--tomato); }
+  .status.is-finished{ color:var(--tomato); }
+
+  .last-heard{
+    min-height:18px;
+    font-size:12.5px;
+    color:var(--chalk-white-dim);
+    text-align:center;
+  }
+  .last-heard span{ color:var(--chalk-white); }
+
+  /* ---- signature: hanging price tag ---- */
+  .tag-hang{
+    display:flex;
+    justify-content:center;
+    margin-bottom:-2px;
+  }
+  .tag-string{
+    width:2px; height:22px;
+    background:var(--line);
+  }
+
+  .price-tag{
+    position:relative;
+    background:var(--chalk-black-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius-tag);
+    padding:26px 20px 22px;
+    text-align:center;
+    transform:rotate(-0.6deg);
+    box-shadow:0 18px 40px rgba(0,0,0,0.35);
+  }
+
+  .price-tag::before{
+    content:"";
+    position:absolute;
+    top:-9px; left:50%;
+    transform:translateX(-50%);
+    width:16px; height:16px;
+    border-radius:50%;
+    background:var(--chalk-black);
+    border:1px solid var(--line);
+  }
+
+  .tag-label{
+    font-family:'Kanit', sans-serif;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--chalk-white-dim);
+    margin-bottom:6px;
+  }
+
+  .tag-total{
+    font-family:'Kanit', sans-serif;
+    font-weight:800;
+    font-size:56px;
+    line-height:1;
+    color:var(--mustard);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-0.01em;
+    word-break:break-all;
+  }
+
+  .tag-unit{
+    font-family:'Kanit', sans-serif;
+    font-size:16px;
+    color:var(--chalk-white-dim);
+    margin-top:4px;
+  }
+
+  /* ---- receipt / history strip ---- */
+  .receipt{
+    margin-top:26px;
+    background:var(--chalk-black-2);
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+  }
+
+  .receipt-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 16px;
+    border-bottom:1px dashed var(--line);
+  }
+
+  .receipt-head span{
+    font-family:'Kanit', sans-serif;
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--chalk-white-dim);
+  }
+
+  .clear-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--chalk-white-dim);
+    font-family:'Sarabun', sans-serif;
+    font-size:12px;
+    padding:5px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:border-color .2s, color .2s;
+  }
+  .clear-btn:hover{ border-color:var(--tomato); color:var(--tomato); }
+
+  .receipt-list{
+    max-height:230px;
+    overflow-y:auto;
+    padding:6px 16px;
+  }
+
+  .receipt-empty{
+    padding:20px 4px;
+    text-align:center;
+    color:var(--chalk-white-dim);
+    font-size:13px;
+    line-height:1.7;
+  }
+
+  .item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:10px 0;
+    border-bottom:1px dotted var(--line);
+    font-size:13.5px;
+  }
+  .item:last-child{ border-bottom:none; }
+
+  .item-left{ min-width:0; }
+  .item-idx{
+    font-family:'Kanit', sans-serif;
+    color:var(--mustard);
+    margin-right:6px;
+  }
+  .item-heard{
+    color:var(--chalk-white-dim);
+    font-size:12px;
+    display:block;
+    margin-top:2px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    max-width:210px;
+  }
+  .item-right{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-shrink:0;
+  }
+  .item-val{
+    font-family:'Kanit', sans-serif;
+    font-weight:600;
+    color:var(--chalk-white);
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .del-btn{
+    width:22px; height:22px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--chalk-white-dim);
+    font-size:12px;
+    line-height:1;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .del-btn:hover{
+    border-color:var(--tomato);
+    color:var(--tomato);
+    background:rgba(209,88,59,0.12);
+  }
+
+  footer{
+    margin-top:26px;
+    text-align:center;
+    font-size:12px;
+    color:var(--chalk-white-dim);
+    line-height:1.8;
+  }
+  footer b{ color:var(--chalk-white); }
+
+  .unsupported{
+    margin-top:18px;
+    padding:14px 16px;
+    background:rgba(209,88,59,0.12);
+    border:1px solid var(--tomato);
+    border-radius:10px;
+    font-size:13px;
+    color:var(--chalk-white);
+    line-height:1.7;
+  }
+
+  .manual-row{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+  }
+  .manual-row input{
+    flex:1;
+    background:var(--chalk-black);
+    border:1px solid var(--line);
+    color:var(--chalk-white);
+    border-radius:8px;
+    padding:8px 10px;
+    font-family:'Sarabun', sans-serif;
+    font-size:13px;
+  }
+  .manual-row button{
+    background:var(--mustard);
+    border:none;
+    color:var(--chalk-black);
+    font-family:'Kanit', sans-serif;
+    font-weight:600;
+    padding:8px 16px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Voice Weighing Scale</div>
+    <h1>เครื่องชั่งผลไม้ด้วยเสียง</h1>
+    <p class="sub">พูดน้ำหนักเป็น<b>กิโลกรัม</b>ไปเรื่อยๆ ระหว่างชั่งผลไม้ ระบบจะทวนและรวมยอดให้อัตโนมัติ พูด <b>“ลบ”</b> เพื่อลบรายการล่าสุด และพูด <b>“เสร็จสิ้น”</b> เมื่อชั่งครบแล้ว</p>
+  </header>
+
+  <div class="mic-zone">
+    <button class="mic-btn" id="micBtn" aria-label="เริ่ม/หยุดฟัง">
+      <svg viewBox="0 0 24 24" id="micIcon"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+    </button>
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">กดปุ่มเพื่อเริ่มฟัง</span></div>
+    <div class="last-heard" id="lastHeard"></div>
+  </div>
+
+  <div class="tag-hang"><div class="tag-string"></div></div>
+  <div class="price-tag">
+    <div class="tag-label">น้ำหนักรวม</div>
+    <div class="tag-total" id="total">0</div>
+    <div class="tag-unit">กิโลกรัม</div>
+  </div>
+
+  <div class="receipt">
+    <div class="receipt-head">
+      <span>รายการที่ชั่ง</span>
+      <button class="clear-btn" id="clearBtn">ล้างค่า</button>
+    </div>
+    <div class="receipt-list" id="list">
+      <div class="receipt-empty" id="emptyMsg">ยังไม่มีรายการ — เริ่มพูดตัวเลขน้ำหนัก เช่น<br>“หนึ่งกิโลกรัม” หรือ “1.5”</div>
+    </div>
+  </div>
+
+  <div class="unsupported" id="unsupported" style="display:none">
+    เบราว์เซอร์นี้ไม่รองรับ Web Speech API (แนะนำใช้ <b>Chrome</b> บนคอมพิวเตอร์หรือ Android) กรอกน้ำหนักด้วยมือแทนได้:
+    <div class="manual-row">
+      <input type="number" step="0.01" id="manualInput" placeholder="เช่น 1.5">
+      <button id="manualAdd">เพิ่ม</button>
+    </div>
+  </div>
+
+  <footer>แนะนำใช้ <b>หูฟัง</b> เพื่อกันไมค์ได้ยินเสียงพูดย้อนกลับของระบบเอง · ระบบจะหยุดฟังเองระหว่างพูดทวน · ใช้ได้ดีที่สุดบน Chrome</footer>
+
+</div>
+
+<script>
+(function(){
+  const micBtn = document.getElementById('micBtn');
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const lastHeard = document.getElementById('lastHeard');
+  const totalEl = document.getElementById('total');
+  const listEl = document.getElementById('list');
+  const emptyMsg = document.getElementById('emptyMsg');
+  const clearBtn = document.getElementById('clearBtn');
+  const unsupportedBox = document.getElementById('unsupported');
+  const manualInput = document.getElementById('manualInput');
+  const manualAdd = document.getElementById('manualAdd');
+
+  let items = [];        // {uid, heardText, value} — value is always in kilograms
+  let uidCounter = 0;
+  let total = 0;          // kilograms
+  let listening = false;
+  let finished = false;
+  let recognition = null;
+  let shouldRestart = false;
+
+  let isSpeaking = false;
+  let ignoreUntil = 0;
+  let pausedForProcessing = false;
+
+  // ---------- Thai number-word parser (whole numbers) ----------
+  const digitMap = {'ศูนย์':0,'หนึ่ง':1,'เอ็ด':1,'สอง':2,'ยี่':2,'สาม':3,'สี่':4,'ห้า':5,'หก':6,'เจ็ด':7,'แปด':8,'เก้า':9};
+  const unitMap = {'สิบ':10,'ร้อย':100,'พัน':1000,'หมื่น':10000,'แสน':100000,'ล้าน':1000000};
+  const wordList = ['ล้าน','แสน','หมื่น','พัน','ร้อย','สิบ','เอ็ด','ยี่','ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
+
+  function thaiWordsToNumber(str){
+    let tokens = [];
+    let i = 0;
+    while(i < str.length){
+      let matched = false;
+      for(const w of wordList){
+        if(str.startsWith(w, i)){ tokens.push(w); i += w.length; matched = true; break; }
+      }
+      if(!matched) i++;
+    }
+    if(tokens.length === 0) return null;
+
+    let total = 0, current = 0, million = 0;
+    for(const t of tokens){
+      if(t === 'ล้าน'){ million += (total + current) * 1000000; total = 0; current = 0; continue; }
+      if(unitMap[t] !== undefined){
+        const u = unitMap[t];
+        if(current === 0) current = 1;
+        total += current * u;
+        current = 0;
+      } else {
+        current = digitMap[t];
+      }
+    }
+    const result = million + total + current;
+    return result > 0 ? result : null;
+  }
+
+  // Every number extracted here is treated directly as kilograms — the app
+  // is kilogram-only, no gram unit or conversion anywhere.
+  function extractNumber(text){
+    const digitMatch = text.match(/\d+(\.\d+)?/);
+    if(digitMatch) return parseFloat(digitMatch[0]);
+    const cleaned = text.replace(/กิโลกรัม|กิโล|กรัม|จีบี|บาท/g, '');
+    return thaiWordsToNumber(cleaned);
+  }
+
+  function normalize(text){ return text.replace(/\s+/g, ''); }
+
+  function isFinishPhrase(text){
+    return /เสร็จสิ้น|เสร็จแล้ว|จบการชั่ง/.test(normalize(text));
+  }
+
+  // Any mention of "delete/cancel" words is treated as a delete-family
+  // command and is NEVER allowed to fall through to number extraction —
+  // this is what stops a recognized delete phrase from also being added.
+  function hasDeleteIntent(text){
+    return /ลบ|ยกเลิก/.test(normalize(text));
+  }
+
+  function isDeleteAllIntent(text){
+    return /ลบทั้งหมด|ล้างทั้งหมด|ล้างค่า|เริ่มใหม่/.test(normalize(text));
+  }
+
+  function formatQty(v){
+    return v.toLocaleString('th-TH', { maximumFractionDigits: 2 });
+  }
+
+  // ---------- UI updates ----------
+  function renderTotal(){
+    totalEl.textContent = formatQty(total);
+  }
+
+  function renderList(){
+    listEl.querySelectorAll('.item').forEach(el => el.remove());
+    if(items.length === 0){
+      emptyMsg.style.display = 'block';
+      return;
+    }
+    emptyMsg.style.display = 'none';
+    items.forEach((it, idx) => {
+      const row = document.createElement('div');
+      row.className = 'item';
+      row.dataset.uid = it.uid;
+      row.innerHTML =
+        '<div class="item-left"><span class="item-idx">' + (idx + 1) + '.</span>' +
+        '<span class="item-heard">“' + it.heardText.trim() + '”</span></div>' +
+        '<div class="item-right">' +
+          '<span class="item-val">+' + formatQty(it.value) + ' กก.</span>' +
+          '<button class="del-btn" data-uid="' + it.uid + '" aria-label="ลบรายการนี้">✕</button>' +
+        '</div>';
+      listEl.appendChild(row);
+    });
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+
+  function recalcAndRender(){
+    total = items.reduce((sum, it) => sum + it.value, 0);
+    renderTotal();
+    renderList();
+  }
+
+  function addItem(heardText, value){
+    uidCounter++;
+    items.push({ uid: uidCounter, heardText, value });
+    recalcAndRender();
+  }
+
+  function removeByUid(uid){
+    const idx = items.findIndex(it => it.uid === uid);
+    if(idx === -1) return null;
+    const [removed] = items.splice(idx, 1);
+    recalcAndRender();
+    return removed;
+  }
+
+  function removeLastItem(){
+    if(items.length === 0) return null;
+    return removeByUid(items[items.length - 1].uid);
+  }
+
+  function resetAll(){
+    items = [];
+    recalcAndRender();
+    lastHeard.textContent = '';
+  }
+
+  function setStatus(mode, text){
+    statusEl.classList.remove('is-listening','is-finished','is-speaking');
+    micBtn.classList.remove('listening','finished','speaking');
+    if(mode === 'listening'){
+      statusEl.classList.add('is-listening');
+      micBtn.classList.add('listening');
+    } else if(mode === 'speaking'){
+      statusEl.classList.add('is-speaking');
+      micBtn.classList.add('speaking');
+    } else if(mode === 'finished'){
+      statusEl.classList.add('is-finished');
+      micBtn.classList.add('finished');
+    }
+    statusText.textContent = text;
+  }
+
+  // ---------- speech synthesis ----------
+  function speak(text){
+    return new Promise((resolve) => {
+      isSpeaking = true;
+      if(listening) setStatus('speaking', 'กำลังพูดทวน...');
+      if(!('speechSynthesis' in window)){
+        isSpeaking = false;
+        ignoreUntil = Date.now() + 400;
+        resolve();
+        return;
+      }
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'th-TH';
+      utter.rate = 1.02;
+      const done = () => {
+        isSpeaking = false;
+        ignoreUntil = Date.now() + 500;
+        resolve();
+      };
+      utter.onend = done;
+      utter.onerror = done;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    });
+  }
+
+  async function resumeListeningIfNeeded(){
+    if(!recognition || !shouldRestart || finished) return;
+    setStatus('listening', 'กำลังฟัง... พูดน้ำหนักได้เลย');
+    setTimeout(() => {
+      if(shouldRestart && !finished){
+        try{ recognition.start(); }catch(e){ /* already started */ }
+      }
+    }, 150);
+  }
+
+  // ---------- speech recognition ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if(!SR){
+    unsupportedBox.style.display = 'block';
+    micBtn.disabled = true;
+    setStatus('idle', 'ไม่รองรับการฟังเสียงในเบราว์เซอร์นี้');
+  } else {
+    recognition = new SR();
+    recognition.lang = 'th-TH';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = async function(event){
+      if(isSpeaking || Date.now() < ignoreUntil) return;
+
+      let finalText = '';
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        const res = event.results[i];
+        if(res.isFinal){
+          finalText += res[0].transcript;
+        } else {
+          lastHeard.innerHTML = 'กำลังฟัง: <span>' + res[0].transcript + '</span>';
+        }
+      }
+      if(!finalText) return;
+      lastHeard.innerHTML = 'ได้ยิน: <span>' + finalText.trim() + '</span>';
+
+      if(isFinishPhrase(finalText)){
+        finished = true;
+        shouldRestart = false;
+        pausedForProcessing = true;
+        try{ recognition.stop(); }catch(e){}
+        setStatus('finished', 'เสร็จสิ้นการชั่ง');
+        await speak('เสร็จสิ้น รวมน้ำหนักทั้งหมด ' + formatQty(total) + ' กิโลกรัม');
+        return;
+      }
+
+      // Delete family: checked BEFORE number extraction, and — critically —
+      // if the phrase contains any delete/cancel wording at all, it stops
+      // here and can never also be parsed as a number to add.
+      if(hasDeleteIntent(finalText)){
+        pausedForProcessing = true;
+        try{ recognition.stop(); }catch(e){}
+
+        if(isDeleteAllIntent(finalText)){
+          resetAll();
+          await speak('ล้างรายการทั้งหมดแล้ว');
+        } else {
+          const removed = removeLastItem();
+          if(removed){
+            await speak('ลบ ' + formatQty(removed.value) + ' กิโลกรัม แล้ว เหลือรวม ' + formatQty(total) + ' กิโลกรัม');
+          } else {
+            await speak('ยังไม่มีรายการให้ลบ');
+          }
+        }
+        pausedForProcessing = false;
+        resumeListeningIfNeeded();
+        return;
+      }
+
+      const value = extractNumber(finalText);
+      if(value !== null && value > 0){
+        pausedForProcessing = true;
+        try{ recognition.stop(); }catch(e){}
+        addItem(finalText, value);
+        await speak('บวก ' + formatQty(value) + ' กิโลกรัม รวมทั้งหมด ' + formatQty(total) + ' กิโลกรัม');
+        pausedForProcessing = false;
+        resumeListeningIfNeeded();
+      }
+    };
+
+    recognition.onend = function(){
+      if(pausedForProcessing){
+        return;
+      }
+      if(shouldRestart && !finished){
+        setTimeout(() => {
+          if(shouldRestart && !finished){
+            try{ recognition.start(); }catch(e){}
+          }
+        }, 350);
+      } else if(!finished){
+        listening = false;
+        setStatus('idle', 'กดปุ่มเพื่อเริ่มฟัง');
+      }
+    };
+
+    recognition.onerror = function(e){
+      if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        setStatus('idle', 'กรุณาอนุญาตให้ใช้ไมโครโฟน');
+        shouldRestart = false;
+      }
+    };
+  }
+
+  micBtn.addEventListener('click', function(){
+    if(!recognition) return;
+
+    if(finished){
+      finished = false;
+      resetAll();
+    }
+
+    if(listening){
+      shouldRestart = false;
+      listening = false;
+      pausedForProcessing = false;
+      try{ recognition.stop(); }catch(e){}
+      setStatus('idle', 'กดปุ่มเพื่อเริ่มฟัง');
+    } else {
+      listening = true;
+      shouldRestart = true;
+      setStatus('listening', 'กำลังฟัง... พูดน้ำหนักได้เลย');
+      try{ recognition.start(); }catch(e){}
+    }
+  });
+
+  clearBtn.addEventListener('click', resetAll);
+
+  listEl.addEventListener('click', function(e){
+    const btn = e.target.closest('.del-btn');
+    if(!btn) return;
+    const uid = parseInt(btn.dataset.uid, 10);
+    removeByUid(uid);
+  });
+
+  manualAdd.addEventListener('click', function(){
+    const v = parseFloat(manualInput.value);
+    if(!isNaN(v) && v > 0){
+      addItem(manualInput.value + ' กก. (กรอกเอง)', v);
+      manualInput.value = '';
+    }
+  });
+  manualInput.addEventListener('keydown', function(e){
+    if(e.key === 'Enter') manualAdd.click();
+  });
+
+  renderTotal();
+})();
+</script>
+</body>
+</html>
